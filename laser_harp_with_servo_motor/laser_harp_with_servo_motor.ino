@@ -2,11 +2,11 @@ const int dirPin = 2;  // Direction pin
 const int stepPin = 3; // Step pin
 
 // Define motor and harp properties
-const int TOTAL_STEPS = 20;         // Total travel distance in steps
+const int TOTAL_STEPS = 15;         // Total travel distance in steps
 const int NUM_STRINGS = 6;          // Number of laser harp strings
 const int STEPS_PER_STRING = TOTAL_STEPS / NUM_STRINGS; // Steps between strings
-const int STEP_DELAY = 600;         // Minimum reliable delay between steps in microseconds
-const int PAUSE_DELAY = 10;         // Pause at each string in milliseconds
+const int STEP_DELAY = 500;         // Minimum reliable delay between steps in microseconds
+const int PAUSE_DELAY = 4;         // Pause at each string in milliseconds
 
 void setup() {
   pinMode(stepPin, OUTPUT);
