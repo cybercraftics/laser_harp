@@ -2,7 +2,7 @@
 #define STEP_PIN 3
 
 // Define motor properties
-const int STEPS_PER_REVOLUTION = 200;
+const int TRAVEL_DISTANCE = 21; // Total travel distance in steps
 
 
 void setup() {
@@ -13,24 +13,24 @@ void setup() {
 void loop() {
     digitalWrite(DIRECTION_PIN, HIGH);
 
-    for (int i = 0; i < STEPS_PER_REVOLUTION; i++) {
+    for (int i = 0; i < TRAVEL_DISTANCE; i++) {
         digitalWrite(STEP_PIN, HIGH);
-        delayMicroseconds(2000);
+        delayMicroseconds(450);
         digitalWrite(STEP_PIN, LOW);
-        delayMicroseconds(2000);
+        delayMicroseconds(450);
     }
 
-    delay(1000);
+    delay(10);
 
     digitalWrite(DIRECTION_PIN, LOW);
 
-    for (int i = 0; i < STEPS_PER_REVOLUTION; i++) {
+    for (int i = 0; i < TRAVEL_DISTANCE; i++) {
         digitalWrite(STEP_PIN, HIGH);
-        delayMicroseconds(2000);
+        delayMicroseconds(450);
         digitalWrite(STEP_PIN, LOW);
-        delayMicroseconds(2000);
+        delayMicroseconds(450);
     }
 
-    delay(1000);
+    delay(10);
 }
 
