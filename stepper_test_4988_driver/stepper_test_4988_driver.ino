@@ -2,7 +2,7 @@
 #define STEP_PIN 3
 
 // Define motor properties
-const int TRAVEL_DISTANCE = 50; // Total travel distance in steps
+const int TRAVEL_DISTANCE = 7; // Total travel distance in steps
 
 
 void setup() {
