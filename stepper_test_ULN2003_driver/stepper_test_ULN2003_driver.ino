@@ -1,10 +1,11 @@
 #include <Stepper.h>
 
-#define LASER_PIN 2
+#define LASER_PIN 4
 #define LASER_DETECTOR_PIN A0
 
 const float STEPS_PER_REVOLUTION = 200;
-const unsigned long LASER_ON_DURATION = 1; // Laser on for 1 ms
+const unsigned int LASER_ON_DURATION = 150;
+const unsigned int NUMBER_OF_STRINGS = 7;
 
 Stepper stepper(STEPS_PER_REVOLUTION, 8, 10, 9, 11);
 
@@ -16,20 +17,22 @@ void setup() {
 }
 
 void loop() {
-  // Forward 7 times
-  for (int i = 0; i < 5; i++) {
+  for (int i = 0; i < NUMBER_OF_STRINGS; i++) {
       stepper.step(2);
-      if (i == 0) {
-        delay(5);
-      } else {
-        delay(4);
+      if (i == 3) {
+        delayMicroseconds(1000);
       }
-      digitalWrite(LASER_PIN, HIGH);
-      delay(1);
-      digitalWrite(LASER_PIN, LOW);
-  }
-    
-  stepper.step(-10);
 
-  Serial.println(analogRead(LASER_DETECTOR_PIN));
+      if (i == 4 || i == 5 || i == 6) {
+        delayMicroseconds(800);
+      }
+
+      analogWrite(LASER_PIN, 255);
+      delayMicroseconds(LASER_ON_DURATION);
+      analogWrite(LASER_PIN, 0);
+      
+  }
+  stepper.step(-NUMBER_OF_STRINGS * 2);
+
+  // Serial.println(analogRead(LASER_DETECTOR_PIN));
 }
