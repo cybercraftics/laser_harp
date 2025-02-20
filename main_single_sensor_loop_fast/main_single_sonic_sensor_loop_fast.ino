@@ -73,14 +73,6 @@ void loop() {
     for (int i = 0; i < NUMBER_OF_STRINGS; i++) {
         stepper.step(2);
 
-        // Some microsecond delays (example from your code)
-        if (i == 3) {
-            delayMicroseconds(1000);
-        }
-        if (i == 4 || i == 5 || i == 6) {
-            delayMicroseconds(800);
-        }
-
         // Fire laser
         analogWrite(LASER_PIN, 255);
         delayMicroseconds(LASER_ON_DURATION);

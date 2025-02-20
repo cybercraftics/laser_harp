@@ -5,23 +5,20 @@
 #define GREEN_LASER_PIN  2
 #define RED_LASER_PIN    3
 #define BLUE_LASER_PIN   4
-#define CLOSED_LOOP_SENSOR_ENABLE_PIN 7
-#define CLOSED_LOOP_MOTOR_SENSOR_PIN A5
+#define CLOSED_LOOP_VCC_PIN 7
+#define CLOSED_LOOP_DO_PIN A5
 
 #define BUZZER_PIN 5
 
+const unsigned int STEPS_PER_REVOLUTION = 200;
+const unsigned int STEPPER_SPEED = 220;
+const unsigned int STEPPER_HOMING_SPEED = 10;
+const unsigned long LASER_ON_DURATION = 150;
+const unsigned int NUMBER_OF_STRINGS = 7;
+const unsigned int HOME_POSITION = -5;
+
 SoftwareSerial ultrasonicSensor1(8, 9);
 Stepper stepper(STEPS_PER_REVOLUTION, 10, 12, 11, 13);
-
-const unsigned int STEPS_PER_REVOLUTION = 200;
-const unsigned long LASER_ON_DURATION = 100;
-const unsigned int NUMBER_OF_STRINGS = 7;
-
-int positionsForward[NUMBER_OF_STRINGS]  = {0, 2, 4, 6, 8, 10, 12};
-int positionsReverse[NUMBER_OF_STRINGS]  = {12, 10, 8, 6, 4, 2, 0};
-
-int  stringIndex    = 0;
-bool goingForward   = true;
 
 struct SensorState {
   bool playing;
@@ -58,113 +55,62 @@ void setup() {
   analogWrite(RED_LASER_PIN,   0);
   analogWrite(BLUE_LASER_PIN,  0);
 
-  pinMode(CLOSED_LOOP_SENSOR_ENABLE_PIN, OUTPUT);
-  pinMode(CLOSED_LOOP_MOTOR_SENSOR_PIN, INPUT);
+  pinMode(CLOSED_LOOP_VCC_PIN, OUTPUT);
+  pinMode(CLOSED_LOOP_DO_PIN, INPUT);
 
   homingRoutine();
 
-  stepper.setMaxSpeed(MAX_STEPPER_SPEED);
-  stepper.setAcceleration(STEPPER_ACCEL);
+  stepper.setSpeed(STEPPER_SPEED);
 }
 
 void loop() {
-  stepper.run();
-
   handleMotorAndLaser();
 
-  unsigned long now = millis();
-  if (now - lastSensorCheck >= sensorCheckRate) {
-    lastSensorCheck = now;
-    triggerAndReadUltrasonics();
-  }
+  // unsigned long now = millis();
+  // if (now - lastSensorCheck >= sensorCheckRate) {
+  //   lastSensorCheck = now;
+  //   triggerAndReadUltrasonics();
+  // }
 
-  MidiUSB.flush();
+  // MidiUSB.flush();
 }
 
 void homingRoutine() {
   Serial.println("Homing...");
 
-  digitalWrite(CLOSED_LOOP_SENSOR_ENABLE_PIN, HIGH);
+  digitalWrite(CLOSED_LOOP_VCC_PIN, HIGH);
 
-  stepper.setMaxSpeed(50.0);
-  stepper.setAcceleration(50.0);
-
-  stepper.runToNewPosition(50);
-
-  stepper.moveTo(-20000);
-  while (digitalRead(CLOSED_LOOP_MOTOR_SENSOR_PIN) != 0) {
-    stepper.run();
+  stepper.setSpeed(STEPPER_HOMING_SPEED);
+  stepper.step(50);
+  while (digitalRead(CLOSED_LOOP_DO_PIN) != 0) {
+    stepper.step(-1);
   }
 
-  stepper.stop();
-  stepper.setCurrentPosition(0);
+  digitalWrite(CLOSED_LOOP_VCC_PIN, LOW);
 
-  delay(100);
-  stepper.setMaxSpeed(5);
-
-  stepper.runToNewPosition(-9);
-  stepper.setCurrentPosition(0);
-
-  digitalWrite(CLOSED_LOOP_SENSOR_ENABLE_PIN, LOW);
+  stepper.step(HOME_POSITION);
 
   Serial.println("Homing complete.");
 }
 
 void handleMotorAndLaser() {
-  // --- 1) FORWARD DIRECTION (laser active) ---
-  if (goingForward) {
-    // If the stepper has finished moving and the laser is off,
-    // turn on the laser for LASER_ON_DURATION microseconds.
-    if (!stepper.isRunning() && !laserActive) {
-      analogWrite(GREEN_LASER_PIN, 255);
-      laserActive = true;
-      laserOnStartMicros = micros();
+  for (int i = 0; i < NUMBER_OF_STRINGS; i++) {
+    stepper.step(2);
+    
+    if (i == 3) {
+      delayMicroseconds(1000);
+    }
+    if (i == 4 || i == 5 || i == 6) {
+      delayMicroseconds(800);
     }
 
-    // If the laser is currently on, check how long it’s been
-    if (laserActive) {
-      unsigned long elapsed = micros() - laserOnStartMicros;
-      if (elapsed >= LASER_ON_DURATION) {
-        // Laser time is up—turn it off
-        analogWrite(GREEN_LASER_PIN, 0);
-        laserActive = false;
+    analogWrite(GREEN_LASER_PIN, 255);
 
-        // Advance to the next forward position
-        stringIndex++;
-        if (stringIndex >= 7) {
-          // Finished the forward run, switch to backward
-          stringIndex = 0;
-          goingForward = false;
-        }
+    delayMicroseconds(LASER_ON_DURATION);
 
-        // Command the stepper to move to the new position
-        if (goingForward) {
-          stepper.moveTo(positionsForward[stringIndex]);
-        } else {
-          stepper.moveTo(positionsReverse[stringIndex]);
-        }
-      }
-    }
-
-  // --- 2) REVERSE DIRECTION (no laser) ---
-  } else {
-    // In reverse, we simply move the stepper without firing the laser.
-    // Once the stepper finishes, go to the next reverse position.
-    if (!stepper.isRunning()) {
-      stringIndex++;
-      if (stringIndex >= 7) {
-        // Finished the reverse run, switch to forward
-        stringIndex = 0;
-        goingForward = true;
-      }
-
-      if (goingForward) {
-        stepper.moveTo(positionsForward[stringIndex]);
-      } else {
-        stepper.moveTo(positionsReverse[stringIndex]);
-      }
-    }
+    analogWrite(GREEN_LASER_PIN, 0);
   }
+  stepper.step(-NUMBER_OF_STRINGS * 2);
 }
 
 // --------------------------------------------------------------------------

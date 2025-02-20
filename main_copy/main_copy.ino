@@ -13,8 +13,8 @@
 SoftwareSerial ultrasonicSensor1(8, 9);
 AccelStepper stepper(AccelStepper::FULL4WIRE, 10, 12, 11, 13);
 
-const float MAX_STEPPER_SPEED = 120000.0;
-const float STEPPER_ACCEL     = 120000.0;
+const float MAX_STEPPER_SPEED = 100000.0;
+const float STEPPER_ACCEL     = 100000.0;
 
 bool          laserActive         = false;
 unsigned long laserOnStartMicros  = 0;
