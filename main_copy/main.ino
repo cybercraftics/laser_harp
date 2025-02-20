@@ -1,4 +1,4 @@
-#include <Stepper.h>
+#include <AccelStepper.h>
 #include <SoftwareSerial.h>
 #include "MIDIUSB.h"
 
@@ -11,9 +11,13 @@
 #define BUZZER_PIN 5
 
 SoftwareSerial ultrasonicSensor1(8, 9);
-Stepper stepper(STEPS_PER_REVOLUTION, 10, 12, 11, 13);
+AccelStepper stepper(AccelStepper::FULL4WIRE, 10, 12, 11, 13);
 
-const unsigned int STEPS_PER_REVOLUTION = 200;
+const float MAX_STEPPER_SPEED = 120000.0;
+const float STEPPER_ACCEL     = 120000.0;
+
+bool          laserActive         = false;
+unsigned long laserOnStartMicros  = 0;
 const unsigned long LASER_ON_DURATION = 100;
 const unsigned int NUMBER_OF_STRINGS = 7;
 
