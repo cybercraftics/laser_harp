@@ -1,24 +1,8 @@
-#include <Stepper.h>
 #include <SoftwareSerial.h>
 #include "MIDIUSB.h"
-
-#define GREEN_LASER_PIN  2
-#define RED_LASER_PIN    3
-#define BLUE_LASER_PIN   4
-#define CLOSED_LOOP_VCC_PIN 7
-#define CLOSED_LOOP_DO_PIN A5
-
-#define BUZZER_PIN 5
-
-const unsigned int STEPS_PER_REVOLUTION = 200;
-const unsigned int STEPPER_SPEED = 220;
-const unsigned int STEPPER_HOMING_SPEED = 10;
-const unsigned long LASER_ON_DURATION = 150;
-const unsigned int NUMBER_OF_STRINGS = 7;
-const unsigned int HOME_POSITION = -5;
+#include <Wire.h>
 
 SoftwareSerial ultrasonicSensor1(8, 9);
-Stepper stepper(STEPS_PER_REVOLUTION, 10, 12, 11, 13);
 
 struct SensorState {
   bool playing;
@@ -34,8 +18,8 @@ const unsigned long sensorCheckRate = 200;
 unsigned int HighByte = 0;
 unsigned int LowByte  = 0;
 unsigned int Len      = 0;
+volatile int receivedData = 0;
 
-void handleMotorAndLaser();
 void triggerAndReadUltrasonics();
 void processSensorReading(unsigned int distanceMM, SensorState &state, byte channel);
 int  mapDistanceToPitch(unsigned int distanceMM, byte sensorIndex);
@@ -47,70 +31,26 @@ void setup() {
   Serial.begin(9600);               // debug
   ultrasonicSensor1.begin(9600);    // ultrasonic sensor 1
   Serial1.begin(9600);              // ultrasonic sensor 2
-
-  pinMode(GREEN_LASER_PIN, OUTPUT);
-  pinMode(RED_LASER_PIN,   OUTPUT);
-  pinMode(BLUE_LASER_PIN,  OUTPUT);
-  analogWrite(GREEN_LASER_PIN, 0);
-  analogWrite(RED_LASER_PIN,   0);
-  analogWrite(BLUE_LASER_PIN,  0);
-
-  pinMode(CLOSED_LOOP_VCC_PIN, OUTPUT);
-  pinMode(CLOSED_LOOP_DO_PIN, INPUT);
-
-  homingRoutine();
-
-  stepper.setSpeed(STEPPER_SPEED);
+  Wire.begin(0x08); // Join I2C bus as Slave with address 8
+  Wire.onReceive(receiveEvent); // Register function to handle received data
 }
 
 void loop() {
-  handleMotorAndLaser();
-
-  // unsigned long now = millis();
-  // if (now - lastSensorCheck >= sensorCheckRate) {
-  //   lastSensorCheck = now;
-  //   triggerAndReadUltrasonics();
-  // }
-
-  // MidiUSB.flush();
-}
-
-void homingRoutine() {
-  Serial.println("Homing...");
-
-  digitalWrite(CLOSED_LOOP_VCC_PIN, HIGH);
-
-  stepper.setSpeed(STEPPER_HOMING_SPEED);
-  stepper.step(50);
-  while (digitalRead(CLOSED_LOOP_DO_PIN) != 0) {
-    stepper.step(-1);
+  unsigned long now = millis();
+  if (now - lastSensorCheck >= sensorCheckRate) {
+    lastSensorCheck = now;
+    triggerAndReadUltrasonics();
   }
 
-  digitalWrite(CLOSED_LOOP_VCC_PIN, LOW);
-
-  stepper.step(HOME_POSITION);
-
-  Serial.println("Homing complete.");
+  MidiUSB.flush();
 }
 
-void handleMotorAndLaser() {
-  for (int i = 0; i < NUMBER_OF_STRINGS; i++) {
-    stepper.step(2);
-    
-    if (i == 3) {
-      delayMicroseconds(1000);
-    }
-    if (i == 4 || i == 5 || i == 6) {
-      delayMicroseconds(800);
-    }
-
-    analogWrite(GREEN_LASER_PIN, 255);
-
-    delayMicroseconds(LASER_ON_DURATION);
-
-    analogWrite(GREEN_LASER_PIN, 0);
+void receiveEvent(int bytesReceived) {
+  while (Wire.available()) {
+    receivedData = Wire.read(); // Read incoming data
+    Serial.print("Received: ");
+    Serial.println(receivedData);
   }
-  stepper.step(-NUMBER_OF_STRINGS * 2);
 }
 
 // --------------------------------------------------------------------------
@@ -174,8 +114,7 @@ int mapDistanceToPitch(unsigned int distanceMM, byte sensorIndex) {
   int maxPitch = 72;  // C5
   int pitch    = map(distanceMM, 0, 1500, maxPitch, minPitch);
 
-  // Optionally offset one sensor by an octave
-  // if (sensorIndex == 1) pitch += 12;
+  if (sensorIndex == 1) pitch += 12;
 
   return constrain(pitch, minPitch, maxPitch);
 }
