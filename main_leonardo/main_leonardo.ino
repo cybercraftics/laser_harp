@@ -2,7 +2,7 @@
 #include "MIDIUSB.h"
 #include <Wire.h>
 
-SoftwareSerial ultrasonicSensor1(8, 9);
+SoftwareSerial ultrasonicSensor1(8, 9); // RX, TX
 
 struct SensorState {
   bool playing;
@@ -13,7 +13,7 @@ SensorState sensor1State = { false, 0 };
 SensorState sensor2State = { false, 0 };
 
 unsigned long lastSensorCheck       = 0;
-const unsigned long sensorCheckRate = 200;
+const unsigned long sensorCheckRate = 50; // Reduced from 200 ms for faster responsiveness
 
 unsigned int HighByte = 0;
 unsigned int LowByte  = 0;
@@ -29,7 +29,7 @@ void noteOff(byte channel, byte pitch, byte velocity);
 
 void setup() {
   Serial.begin(9600);               // debug
-  ultrasonicSensor1.begin(9600);    // ultrasonic sensor 1
+  ultrasonicSensor1.begin(9600);     // ultrasonic sensor 1
   Serial1.begin(9600);              // ultrasonic sensor 2
   Wire.begin(0x08); // Join I2C bus as Slave with address 8
   Wire.onReceive(receiveEvent); // Register function to handle received data
@@ -59,7 +59,7 @@ void receiveEvent(int bytesReceived) {
 void triggerAndReadUltrasonics() {
   // Send "0x55" to each sensor to trigger measurement
   ultrasonicSensor1.write(0x55);   // Sensor1
-  Serial1.write(0x55);    // Sensor2
+  Serial1.write(0x55);             // Sensor2
 
   // Read sensor1 if data is available
   if (ultrasonicSensor1.available() >= 2) {
