@@ -13,7 +13,7 @@ const unsigned int STEPPER_SPEED = 220;
 const unsigned int STEPPER_HOMING_SPEED = 10;
 const unsigned long LASER_ON_DURATION = 150;
 const unsigned int NUMBER_OF_STRINGS = 7;
-const unsigned int HOME_POSITION = -7;
+const unsigned int HOME_POSITION = -8;
 int counter = 0;
 
 Stepper stepper(STEPS_PER_REVOLUTION, 10, 12, 11, 13);
@@ -45,11 +45,11 @@ void setup() {
 
 void loop() {
   handleMotorAndLaser();
-  Wire.beginTransmission(0x08); // Start communication with device at address 8
-  Wire.write(counter); // Send counter value
-  Wire.endTransmission(); // Stop transmission
+  Wire.beginTransmission(0x08);
+  Wire.write(counter);
+  Wire.endTransmission();
   
-  counter++; // Increment counter
+  counter++;
 }
 
 void homingRoutine() {
@@ -58,9 +58,11 @@ void homingRoutine() {
   digitalWrite(CLOSED_LOOP_VCC_PIN, HIGH);
 
   stepper.setSpeed(STEPPER_HOMING_SPEED);
-  stepper.step(50);
-  while (digitalRead(CLOSED_LOOP_DO_PIN) != 0) {
+  stepper.step(40);
+  int maxSteps = 40;
+  while (digitalRead(CLOSED_LOOP_DO_PIN) != 0 && maxSteps > 0) {
     stepper.step(-1);
+    maxSteps--;
   }
 
   digitalWrite(CLOSED_LOOP_VCC_PIN, LOW);
