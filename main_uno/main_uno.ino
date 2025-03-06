@@ -15,7 +15,7 @@ const unsigned long LASER_ON_DURATION = 150;
 const unsigned int NUMBER_OF_STRINGS = 7;
 const unsigned int HOME_POSITION = -7;
 const unsigned int LIGHT_DETECTOR_PINS[] = {A0, A1, A2, A3};
-const unsigned int LIGHT_DETECTOR_THRESHOLD = 40;
+const unsigned int LIGHT_DETECTOR_THRESHOLD = 20;
 
 Stepper stepper(STEPS_PER_REVOLUTION, 10, 12, 11, 13);
 
@@ -48,7 +48,7 @@ void setup() {
 
   analogWrite(LASER_ENABLE_PIN, 255);
 
-  ADCSRA = (ADCSRA & 0xF8) | 0x03;
+  ADCSRA = (ADCSRA & 0xF8) | 0x02;
 
   stepper.setSpeed(STEPPER_SPEED);
 }
@@ -103,7 +103,7 @@ void handleMotorAndLaser() {
 
 void handleBeamsInterrupt(int currentBeam) {
   bool beamInterrupted = false;
-  delayMicroseconds(100);
+  delayMicroseconds(50);
   for (int j = 0; j < 4; j++) {
     int val = analogRead(LIGHT_DETECTOR_PINS[j]);
     if (calibrationCyclesLeft > 0) {
