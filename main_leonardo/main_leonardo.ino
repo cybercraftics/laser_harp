@@ -61,11 +61,11 @@ void setup() {
 void loop() {
   unsigned long now = millis();
 
-  // // 1) Periodically read the ultrasonic sensors
-  // if (now - lastSensorCheck >= sensorCheckRate) {
-  //   lastSensorCheck = now;
-  //   triggerAndReadUltrasonics();
-  // }
+  // 1) Periodically read the ultrasonic sensors
+  if (now - lastSensorCheck >= sensorCheckRate) {
+    lastSensorCheck = now;
+    triggerAndReadUltrasonics();
+  }
 
   for (int i = 0; i < NUM_BEAMS; i++) {
     bool beamIsInterrupted = (receivedData & (1 << i)) != 0;  // check bit i
@@ -78,7 +78,7 @@ void loop() {
       beamStates[i].offStartTime = 0;
 
       // Decide which channel and which sensor distance
-      byte channel      = (i < 4) ? 0 : 1;   // first 4 beams => channel 0, last 3 => channel 1
+      byte channel      = i
       unsigned int dist = (i < 4) ? sensor1Distance : sensor2Distance;
 
       // 1) Determine the semitone offset from the base note
