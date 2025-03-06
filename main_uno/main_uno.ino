@@ -13,14 +13,15 @@ const unsigned int STEPPER_SPEED = 220;
 const unsigned int STEPPER_HOMING_SPEED = 10;
 const unsigned long LASER_ON_DURATION = 150;
 const unsigned int NUMBER_OF_STRINGS = 7;
-const unsigned int HOME_POSITION = -8;
+const unsigned int HOME_POSITION = -7;
 const unsigned int LIGHT_DETECTOR_PINS[] = {A0, A1, A2, A3};
+const unsigned int LIGHT_DETECTOR_THRESHOLD = 40;
 
 Stepper stepper(STEPS_PER_REVOLUTION, 10, 12, 11, 13);
 
 unsigned int sensorBaseline[4];
 unsigned long sensorSum[4];
-int calibrationCyclesLeft = 10;
+int calibrationCyclesLeft = 30;
 byte interruptedBeams = 0;
 
 void homingRoutine();
@@ -35,6 +36,7 @@ void setup() {
   pinMode(RED_LASER_PIN,   OUTPUT);
   pinMode(BLUE_LASER_PIN,  OUTPUT);
   pinMode(LASER_ENABLE_PIN, OUTPUT);
+
   analogWrite(GREEN_LASER_PIN, 0);
   analogWrite(RED_LASER_PIN,   0);
   analogWrite(BLUE_LASER_PIN,  0);
@@ -44,11 +46,9 @@ void setup() {
 
   homingRoutine();
 
-  // Turn on laser fully
   analogWrite(LASER_ENABLE_PIN, 255);
 
-  // ******** SPEED UP ADC ********
-  ADCSRA = (ADCSRA & 0xF8) | 0x04; // prescaler = 16 instead of default 128
+  ADCSRA = (ADCSRA & 0xF8) | 0x03;
 
   stepper.setSpeed(STEPPER_SPEED);
 }
@@ -65,7 +65,7 @@ void homingRoutine() {
   digitalWrite(CLOSED_LOOP_VCC_PIN, HIGH);
   stepper.setSpeed(STEPPER_HOMING_SPEED);
   stepper.step(40);
-  int maxSteps = 40;
+  int maxSteps = 100;
   while (digitalRead(CLOSED_LOOP_DO_PIN) != 0 && maxSteps > 0) {
     stepper.step(-1);
     maxSteps--;
@@ -78,12 +78,16 @@ void handleMotorAndLaser() {
   interruptedBeams = 0;
   for (int i = 0; i < NUMBER_OF_STRINGS; i++) {
     stepper.step(2);
-    if (i == 3 || i == 4 || i == 6) {
-      delayMicroseconds(800);
+    if (i != 2 && i != 5) {
+      delayMicroseconds(500);
     }
     analogWrite(GREEN_LASER_PIN, 255);
+    analogWrite(RED_LASER_PIN, 255);
+    analogWrite(BLUE_LASER_PIN, 255);
     handleBeamsInterrupt(i);
     analogWrite(GREEN_LASER_PIN, 0);
+    analogWrite(RED_LASER_PIN, 0);
+    analogWrite(BLUE_LASER_PIN, 0);
   }
   stepper.step(-NUMBER_OF_STRINGS * 2);
 
@@ -91,7 +95,7 @@ void handleMotorAndLaser() {
     calibrationCyclesLeft--;
     if (calibrationCyclesLeft == 0) {
       for (int j = 0; j < 4; j++) {
-        sensorBaseline[j] = sensorSum[j] / (10UL * NUMBER_OF_STRINGS);
+        sensorBaseline[j] = sensorSum[j] / (30UL * NUMBER_OF_STRINGS);
       }
     }
   }
@@ -99,13 +103,14 @@ void handleMotorAndLaser() {
 
 void handleBeamsInterrupt(int currentBeam) {
   bool beamInterrupted = false;
+  delayMicroseconds(100);
   for (int j = 0; j < 4; j++) {
     int val = analogRead(LIGHT_DETECTOR_PINS[j]);
     if (calibrationCyclesLeft > 0) {
       sensorSum[j] += val;
     }
     else {
-      if (val > sensorBaseline[j] + 5) {
+      if (val > sensorBaseline[j] + LIGHT_DETECTOR_THRESHOLD) {
         beamInterrupted = true;
       }
     }

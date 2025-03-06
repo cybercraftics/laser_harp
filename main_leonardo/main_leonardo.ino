@@ -2,47 +2,36 @@
 #include "MIDIUSB.h"
 #include <Wire.h>
 
-// --------------------------------------------------------------------------
-//                     GLOBALS & CONSTANTS
-// --------------------------------------------------------------------------
-SoftwareSerial ultrasonicSensor1(8, 9); // RX, TX for Sensor1
+SoftwareSerial ultrasonicSensor1(8, 9);
 
-// This struct tracks whether a beam is playing and the current pitch
 struct BeamState {
   bool playing;
   int  currentPitch;
+  unsigned long offStartTime;
 };
 
-// We'll track 7 beams
 const int NUM_BEAMS = 7;
 BeamState beamStates[NUM_BEAMS];
 
-// Assign a base note to each beam (C, D, E, F, G, A, B) around middle C
-const int baseNotes[NUM_BEAMS] = {60, 62, 64, 65, 67, 69, 71};
+const int baseNotes[NUM_BEAMS] = {24, 26, 28, 29, 31, 33, 35};
 
-// Store the last distances measured from each sensor
+const unsigned long OFF_DEBOUNCE_MS = 200; 
+
 unsigned int sensor1Distance = 0;
 unsigned int sensor2Distance = 0;
 
-// For reading raw bytes from ultrasonic
 unsigned int HighByte = 0;
 unsigned int LowByte  = 0;
 unsigned int Len      = 0;
 
-// I2C data: single byte, bits 0..6 indicate if beam i is interrupted
 volatile byte receivedData = 0;
 
-// Timers
 unsigned long lastSensorCheck       = 0;
-const unsigned long sensorCheckRate = 50; // check sensors every 50ms
+const unsigned long sensorCheckRate = 50;
 
-// Offsets from the sensors to be stabilized
-int oldOffsetChannel0 = -1; // used for beams 0..3
-int oldOffsetChannel1 = -1; // used for beams 4..6
+int oldOffsetChannel0 = -1; 
+int oldOffsetChannel1 = -1;
 
-// --------------------------------------------------------------------------
-//                     FUNCTION DECLARATIONS
-// --------------------------------------------------------------------------
 void triggerAndReadUltrasonics();
 int getOctaveOffset(unsigned int distanceMM);
 int stabilizeOffset(int newOffset, int &oldOffset);
@@ -50,65 +39,66 @@ int stabilizeOffset(int newOffset, int &oldOffset);
 void noteOn(byte channel, byte pitch, byte velocity);
 void noteOff(byte channel, byte pitch, byte velocity);
 
-// --------------------------------------------------------------------------
-//                              SETUP
-// --------------------------------------------------------------------------
-void setup() {
-  Serial.begin(9600);             // Debug prints
-  ultrasonicSensor1.begin(9600);  // Ultrasonic Sensor1
-  Serial1.begin(9600);            // Ultrasonic Sensor2 (e.g. on Mega pins 19 (RX), 18 (TX))
+void receiveEvent(int bytesReceived);
 
-  // Initialize beam states
+void setup() {
+  Serial.begin(9600);
+  ultrasonicSensor1.begin(9600); 
+  Serial1.begin(9600); 
+
   for (int i = 0; i < NUM_BEAMS; i++) {
-    beamStates[i].playing = false;
-    beamStates[i].currentPitch = 0;
+    beamStates[i].playing       = false;
+    beamStates[i].currentPitch  = 0;
+    beamStates[i].offStartTime  = 0;
   }
 
-  // Set up I2C as Slave at address 0x08
   Wire.begin(0x08);
   Wire.onReceive(receiveEvent);
 
   Serial.println("Slave ready, listening for beam data...");
 }
 
-// --------------------------------------------------------------------------
-//                              LOOP
-// --------------------------------------------------------------------------
 void loop() {
-  // 1) Periodically read the ultrasonic sensors to update distances
   unsigned long now = millis();
-  if (now - lastSensorCheck >= sensorCheckRate) {
-    lastSensorCheck = now;
-    triggerAndReadUltrasonics();
-  }
 
-  // 2) Check which beams are on/off and assign notes
+  // // 1) Periodically read the ultrasonic sensors
+  // if (now - lastSensorCheck >= sensorCheckRate) {
+  //   lastSensorCheck = now;
+  //   triggerAndReadUltrasonics();
+  // }
+
   for (int i = 0; i < NUM_BEAMS; i++) {
     bool beamIsInterrupted = (receivedData & (1 << i)) != 0;  // check bit i
 
     if (beamIsInterrupted) {
-      // Decide channel and which sensor's distance
-      byte channel      = (i < 4) ? 0 : 1;   // first 4 beams on channel 0, last 3 on channel 1
+      Serial.print("Beam ");
+      Serial.print(i);
+      Serial.println(" is ON");
+
+      beamStates[i].offStartTime = 0;
+
+      // Decide which channel and which sensor distance
+      byte channel      = (i < 4) ? 0 : 1;   // first 4 beams => channel 0, last 3 => channel 1
       unsigned int dist = (i < 4) ? sensor1Distance : sensor2Distance;
 
-      // 1) Get how many semitones we offset from the base note
+      // 1) Determine the semitone offset from the base note
       int rawOffset = getOctaveOffset(dist);
 
-      // 2) Stabilize that offset so it doesn't flicker
+      // 2) Stabilize that offset so it doesn’t flicker
       int stableOffset = (channel == 0) 
                            ? stabilizeOffset(rawOffset, oldOffsetChannel0)
                            : stabilizeOffset(rawOffset, oldOffsetChannel1);
 
-      // 3) Final pitch = base note (depends on beam) + stable offset
+      // 3) Final pitch = baseNotes[i] + stableOffset
       int newPitch = baseNotes[i] + stableOffset;
 
       if (!beamStates[i].playing) {
-        // If this beam was not playing, start a new note
-        beamStates[i].playing = true;
+        // If this beam wasn’t playing, start a new note
+        beamStates[i].playing      = true;
         beamStates[i].currentPitch = newPitch;
         noteOn(channel, newPitch, 100);
       } else {
-        // Beam is already playing, check if pitch changed
+        // Beam is already playing; check if pitch changed
         if (beamStates[i].currentPitch != newPitch) {
           noteOff(channel, beamStates[i].currentPitch, 0x40);
           beamStates[i].currentPitch = newPitch;
@@ -117,11 +107,20 @@ void loop() {
       }
     }
     else {
-      // Beam bit is OFF => turn off if currently playing
+      // Beam is OFF => maybe turn the note off, but use debounce
       if (beamStates[i].playing) {
-        byte channel = (i < 4) ? 0 : 1;
-        noteOff(channel, beamStates[i].currentPitch, 0x40);
-        beamStates[i].playing = false;
+        // If we haven’t started counting “off” time yet, start now
+        if (beamStates[i].offStartTime == 0) {
+          beamStates[i].offStartTime = now;
+        } 
+        else {
+          // If it’s been off for longer than OFF_DEBOUNCE_MS, turn the note off
+          if (now - beamStates[i].offStartTime >= OFF_DEBOUNCE_MS) {
+            byte channel = (i < 4) ? 0 : 1;
+            noteOff(channel, beamStates[i].currentPitch, 0x40);
+            beamStates[i].playing = false;
+          }
+        }
       }
     }
   }
@@ -130,9 +129,6 @@ void loop() {
   MidiUSB.flush();
 }
 
-// --------------------------------------------------------------------------
-//               I2C Receive Callback: store single byte in receivedData
-// --------------------------------------------------------------------------
 void receiveEvent(int bytesReceived) {
   while (Wire.available()) {
     receivedData = Wire.read(); 
@@ -154,6 +150,7 @@ void triggerAndReadUltrasonics() {
     HighByte          = ultrasonicSensor1.read();
     LowByte           = ultrasonicSensor1.read();
     sensor1Distance   = (HighByte << 8) + LowByte; // in millimeters
+
     // Optional validity check
     if (sensor1Distance < 2 || sensor1Distance > 1800) {
       sensor1Distance = 0;
@@ -165,6 +162,7 @@ void triggerAndReadUltrasonics() {
     HighByte          = Serial1.read();
     LowByte           = Serial1.read();
     sensor2Distance   = (HighByte << 8) + LowByte;
+
     if (sensor2Distance < 2 || sensor2Distance > 1800) {
       sensor2Distance = 0;
     }
@@ -172,10 +170,10 @@ void triggerAndReadUltrasonics() {
 }
 
 // --------------------------------------------------------------------------
-//    Convert distance to pitch offset in semitones (e.g. up to 2 octaves)
+//    Convert distance to pitch offset in semitones (up to 2 octaves, e.g.)
 // --------------------------------------------------------------------------
 int getOctaveOffset(unsigned int distanceMM) {
-  // Example: map 0..1500 => 24..0 (2 octaves)
+  // Example: map 0..1500 mm => 24..0 semitones
   int offset = map(distanceMM, 0, 1500, 24, 0);
   return constrain(offset, 0, 24);
 }
@@ -190,12 +188,12 @@ int stabilizeOffset(int newOffset, int &oldOffset) {
     return newOffset;
   }
 
-  // If difference is small (<= 1 semitone), keep old offset
+  // If difference is small (<= 1 semitone), stay on old offset
   if (abs(newOffset - oldOffset) <= 1) {
     return oldOffset;
   }
 
-  // Otherwise update old offset to new
+  // Otherwise update old offset
   oldOffset = newOffset;
   return newOffset;
 }
@@ -215,10 +213,10 @@ void noteOn(byte channel, byte pitch, byte velocity) {
 
 void noteOff(byte channel, byte pitch, byte velocity) {
   midiEventPacket_t noteOffPacket = {
-    0x08,                   // USB MIDI event (Note Off)
-    (byte)(0x80 | channel), // MIDI command (Note Off) + channel
+    0x08,                    // USB MIDI event (Note Off)
+    (byte)(0x80 | channel),  // MIDI command (Note Off) + channel
     pitch,
     velocity
   };
   MidiUSB.sendMIDI(noteOffPacket);
-}130
+}
