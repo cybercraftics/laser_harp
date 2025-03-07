@@ -15,12 +15,12 @@ const unsigned long LASER_ON_DURATION = 150;
 const unsigned int NUMBER_OF_STRINGS = 7;
 const unsigned int HOME_POSITION = -7;
 const unsigned int LIGHT_DETECTOR_PINS[] = {A0, A1, A2, A3};
-const unsigned int LIGHT_DETECTOR_THRESHOLD = 20;
+const unsigned int LIGHT_DETECTOR_THRESHOLD = 15;
 
 Stepper stepper(STEPS_PER_REVOLUTION, 10, 12, 11, 13);
 
 unsigned int sensorBaseline[4];
-unsigned long sensorSum[4];
+// unsigned long sensorSum[4];
 int calibrationCyclesLeft = 30;
 byte interruptedBeams = 0;
 
