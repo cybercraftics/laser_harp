@@ -66,10 +66,12 @@ void homingRoutine() {
   stepper.setSpeed(STEPPER_HOMING_SPEED);
   stepper.step(40);
   int maxSteps = 100;
+
   while (digitalRead(CLOSED_LOOP_DO_PIN) != 0 && maxSteps > 0) {
     stepper.step(-1);
     maxSteps--;
   }
+
   digitalWrite(CLOSED_LOOP_VCC_PIN, LOW);
   stepper.step(HOME_POSITION);
 }
@@ -78,13 +80,17 @@ void handleMotorAndLaser() {
   interruptedBeams = 0;
   for (int i = 0; i < NUMBER_OF_STRINGS; i++) {
     stepper.step(2);
+
     if (i != 2 && i != 5) {
       delayMicroseconds(500);
     }
+
     analogWrite(GREEN_LASER_PIN, 255);
     analogWrite(RED_LASER_PIN, 255);
     analogWrite(BLUE_LASER_PIN, 255);
+
     handleBeamsInterrupt(i);
+
     analogWrite(GREEN_LASER_PIN, 0);
     analogWrite(RED_LASER_PIN, 0);
     analogWrite(BLUE_LASER_PIN, 0);
@@ -104,17 +110,19 @@ void handleMotorAndLaser() {
 void handleBeamsInterrupt(int currentBeam) {
   bool beamInterrupted = false;
   delayMicroseconds(50);
+
   for (int j = 0; j < 4; j++) {
     int val = analogRead(LIGHT_DETECTOR_PINS[j]);
+
     if (calibrationCyclesLeft > 0) {
       sensorSum[j] += val;
-    }
-    else {
+    } else {
       if (val > sensorBaseline[j] + LIGHT_DETECTOR_THRESHOLD) {
         beamInterrupted = true;
       }
     }
   }
+
   if (beamInterrupted) {
     interruptedBeams |= (1 << currentBeam);
   }

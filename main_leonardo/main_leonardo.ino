@@ -57,8 +57,6 @@ void setup() {
 
   Wire.begin(0x08);
   Wire.onReceive(receiveEvent);
-
-  Serial.println("Slave ready, listening for beam data...");
 }
 
 void loop() {
@@ -71,6 +69,7 @@ void loop() {
 
   byte stableData = 0;
   int firstOn = -1;
+
   for (int i = 0; i < NUM_BEAMS; i++) {
     if (receivedData & (1 << i)) {
       if (firstOn < 0) {
@@ -78,6 +77,7 @@ void loop() {
       }
     }
   }
+
   if (firstOn >= 0) {
     stableData |= (1 << firstOn);
   }
@@ -101,6 +101,7 @@ void loop() {
         } else {
           oldOffsetChannel1 = -1;
         }
+
         beamStates[i].playing = true;
         beamStates[i].currentPitch = newPitch;
         noteOn(channel, newPitch, 100);
@@ -111,17 +112,16 @@ void loop() {
           noteOn(channel, newPitch, 100);
         }
       }
-    }
-    else {
+    } else {
       if (beamStates[i].playing) {
         if (beamStates[i].offStartTime == 0) {
           beamStates[i].offStartTime = now;
-        } 
-        else {
+        } else {
           if (now - beamStates[i].offStartTime >= OFF_DEBOUNCE_MS) {
             byte channel = (i < 4) ? 0 : 1;
             noteOff(channel, beamStates[i].currentPitch, 0x40);
             beamStates[i].playing = false;
+
             if (channel == 0) {
               oldOffsetChannel0 = -1;
             } else {
@@ -150,9 +150,11 @@ void triggerAndReadUltrasonics() {
     HighByte = ultrasonicSensor1.read();
     LowByte = ultrasonicSensor1.read();
     sensor1Distance = (HighByte << 8) + LowByte;
+
     if (sensor1Distance < 2 || sensor1Distance > 1800) {
       sensor1Distance = 0;
     }
+
     if (abs((int)sensor1Distance - (int)lastSensor1Filtered) > 20) {
       sensor1Distance = lastSensor1Filtered;
     } else {
@@ -167,9 +169,11 @@ void triggerAndReadUltrasonics() {
     HighByte = Serial1.read();
     LowByte = Serial1.read();
     sensor2Distance = (HighByte << 8) + LowByte;
+
     if (sensor2Distance < 2 || sensor2Distance > 1800) {
       sensor2Distance = 0;
     }
+
     if (abs((int)sensor2Distance - (int)lastSensor2Filtered) > 20) {
       sensor2Distance = lastSensor2Filtered;
     } else {
@@ -180,6 +184,7 @@ void triggerAndReadUltrasonics() {
 
 int getOctaveOffset(unsigned int distanceMM) {
   int offset = map(distanceMM, 0, 1500, 24, 0);
+  
   return constrain(offset, 0, 24);
 }
 
@@ -188,9 +193,11 @@ int stabilizeOffset(int newOffset, int &oldOffset) {
     oldOffset = newOffset;
     return newOffset;
   }
+
   if (abs(newOffset - oldOffset) <= 1) {
     return oldOffset;
   }
+
   oldOffset = newOffset;
   return newOffset;
 }

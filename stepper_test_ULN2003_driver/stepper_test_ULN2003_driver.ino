@@ -19,12 +19,9 @@ void setup() {
 void loop() {
   for (int i = 0; i < NUMBER_OF_STRINGS; i++) {
       stepper.step(2);
-      if (i == 3) {
-        delayMicroseconds(1000);
-      }
-
-      if (i == 4 || i == 5 || i == 6) {
-        delayMicroseconds(800);
+      
+      if (i != 2 && i != 5) {
+        delayMicroseconds(500);
       }
 
       analogWrite(LASER_PIN, 255);
@@ -33,6 +30,4 @@ void loop() {
       
   }
   stepper.step(-NUMBER_OF_STRINGS * 2);
-
-  // Serial.println(analogRead(LASER_DETECTOR_PIN));
 }

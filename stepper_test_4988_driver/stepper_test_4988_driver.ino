@@ -2,8 +2,7 @@
 #define STEP_PIN 3
 #define LASER_PIN 4
 
-// Define motor properties
-const int TRAVEL_DISTANCE = 15; // Total travel distance in steps
+const int TRAVEL_DISTANCE = 15;
 const int TRAVEL_SPEED = 600;
 const int LASER_ON_DURATION = 80;
 
@@ -22,6 +21,7 @@ void loop() {
         delayMicroseconds(TRAVEL_SPEED);
         digitalWrite(STEP_PIN, LOW);
         delayMicroseconds(TRAVEL_SPEED);
+        
         if (i % 2 == 0 && i != 0) {
           analogWrite(LASER_PIN, 255);
           delayMicroseconds(LASER_ON_DURATION);
@@ -36,14 +36,6 @@ void loop() {
         delayMicroseconds(TRAVEL_SPEED);
         digitalWrite(STEP_PIN, LOW);
         delayMicroseconds(TRAVEL_SPEED);
-        // if (i % 2 == 0 && i != TRAVEL_DISTANCE - 1) {
-        //   delayMicroseconds(LASER_ON_DURATION);
-        // }
-        if (i % 2 == 0 && i != 0) {
-          analogWrite(LASER_PIN, 255);
-          delayMicroseconds(LASER_ON_DURATION);
-          analogWrite(LASER_PIN, 0);
-        }
     }
 }
 
