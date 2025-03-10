@@ -15,12 +15,12 @@ const unsigned long LASER_ON_DURATION = 150;
 const unsigned int NUMBER_OF_STRINGS = 7;
 const unsigned int HOME_POSITION = -7;
 const unsigned int LIGHT_DETECTOR_PINS[] = {A0, A1, A2, A3};
-const unsigned int LIGHT_DETECTOR_THRESHOLD = 15;
+const unsigned int LIGHT_DETECTOR_THRESHOLD = 25;
 
 Stepper stepper(STEPS_PER_REVOLUTION, 10, 12, 11, 13);
 
 unsigned int sensorBaseline[4];
-// unsigned long sensorSum[4];
+unsigned long sensorSum[4];
 int calibrationCyclesLeft = 30;
 byte interruptedBeams = 0;
 
@@ -95,7 +95,7 @@ void handleMotorAndLaser() {
     calibrationCyclesLeft--;
     if (calibrationCyclesLeft == 0) {
       for (int j = 0; j < 4; j++) {
-        sensorBaseline[j] = sensorSum[j] / (30UL * NUMBER_OF_STRINGS);
+        sensorBaseline[j] = sensorSum[j] / (40UL * NUMBER_OF_STRINGS);
       }
     }
   }

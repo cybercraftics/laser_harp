@@ -13,12 +13,15 @@ struct BeamState {
 const int NUM_BEAMS = 7;
 BeamState beamStates[NUM_BEAMS];
 
-const int baseNotes[NUM_BEAMS] = {24, 26, 28, 29, 31, 33, 35};
+const int baseNotes[NUM_BEAMS] = {36, 38, 40, 41, 43, 45, 47};
 
-const unsigned long OFF_DEBOUNCE_MS = 200; 
+const unsigned long OFF_DEBOUNCE_MS = 10; 
 
 unsigned int sensor1Distance = 0;
 unsigned int sensor2Distance = 0;
+
+unsigned int lastSensor1Filtered = 0;
+unsigned int lastSensor2Filtered = 0;
 
 unsigned int HighByte = 0;
 unsigned int LowByte  = 0;
@@ -27,7 +30,7 @@ unsigned int Len      = 0;
 volatile byte receivedData = 0;
 
 unsigned long lastSensorCheck       = 0;
-const unsigned long sensorCheckRate = 50;
+const unsigned long sensorCheckRate = 20;
 
 int oldOffsetChannel0 = -1; 
 int oldOffsetChannel1 = -1;
@@ -83,23 +86,21 @@ void loop() {
     bool beamIsInterrupted = (stableData & (1 << i)) != 0;
 
     if (beamIsInterrupted) {
-      Serial.print("Beam ");
-      Serial.print(i);
-      Serial.println(" is ON");
-
       beamStates[i].offStartTime = 0;
-
       byte channel = (i < 4) ? 0 : 1;
       unsigned int dist = (i < 4) ? sensor1Distance : sensor2Distance;
-
       int rawOffset = getOctaveOffset(dist);
       int stableOffset = (channel == 0) 
                            ? stabilizeOffset(rawOffset, oldOffsetChannel0)
                            : stabilizeOffset(rawOffset, oldOffsetChannel1);
-
       int newPitch = baseNotes[i] + stableOffset;
 
       if (!beamStates[i].playing) {
+        if (channel == 0) {
+          oldOffsetChannel0 = -1;
+        } else {
+          oldOffsetChannel1 = -1;
+        }
         beamStates[i].playing = true;
         beamStates[i].currentPitch = newPitch;
         noteOn(channel, newPitch, 100);
@@ -121,6 +122,11 @@ void loop() {
             byte channel = (i < 4) ? 0 : 1;
             noteOff(channel, beamStates[i].currentPitch, 0x40);
             beamStates[i].playing = false;
+            if (channel == 0) {
+              oldOffsetChannel0 = -1;
+            } else {
+              oldOffsetChannel1 = -1;
+            }
           }
         }
       }
@@ -132,33 +138,44 @@ void loop() {
 
 void receiveEvent(int bytesReceived) {
   while (Wire.available()) {
-    receivedData = Wire.read(); 
-    Serial.print("Received beams: ");
-    Serial.println(receivedData, BIN);
+    receivedData = Wire.read();
   }
 }
 
 void triggerAndReadUltrasonics() {
-  // ultrasonicSensor1.write(0x55);
-  // Serial1.write(0x55);
+  ultrasonicSensor1.write(0x55);
+  delay(50);
 
-  // if (ultrasonicSensor1.available() >= 2) {
-  //   HighByte = ultrasonicSensor1.read();
-  //   LowByte = ultrasonicSensor1.read();
-  //   sensor1Distance = (HighByte << 8) + LowByte;
-  //   if (sensor1Distance < 2 || sensor1Distance > 1800) {
-  //     sensor1Distance = 0;
-  //   }
-  // }
+  if (ultrasonicSensor1.available() >= 2) {
+    HighByte = ultrasonicSensor1.read();
+    LowByte = ultrasonicSensor1.read();
+    sensor1Distance = (HighByte << 8) + LowByte;
+    if (sensor1Distance < 2 || sensor1Distance > 1800) {
+      sensor1Distance = 0;
+    }
+    if (abs((int)sensor1Distance - (int)lastSensor1Filtered) > 20) {
+      sensor1Distance = lastSensor1Filtered;
+    } else {
+      lastSensor1Filtered = sensor1Distance;
+    }
+  }
 
-  // if (Serial1.available() >= 2) {
-  //   HighByte = Serial1.read();
-  //   LowByte = Serial1.read();
-  //   sensor2Distance = (HighByte << 8) + LowByte;
-  //   if (sensor2Distance < 2 || sensor2Distance > 1800) {
-  //     sensor2Distance = 0;
-  //   }
-  // }
+  Serial1.write(0x55);
+  delay(50);
+
+  if (Serial1.available() >= 2) {
+    HighByte = Serial1.read();
+    LowByte = Serial1.read();
+    sensor2Distance = (HighByte << 8) + LowByte;
+    if (sensor2Distance < 2 || sensor2Distance > 1800) {
+      sensor2Distance = 0;
+    }
+    if (abs((int)sensor2Distance - (int)lastSensor2Filtered) > 20) {
+      sensor2Distance = lastSensor2Filtered;
+    } else {
+      lastSensor2Filtered = sensor2Distance;
+    }
+  }
 }
 
 int getOctaveOffset(unsigned int distanceMM) {
