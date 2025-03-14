@@ -62,10 +62,10 @@ void setup() {
 void loop() {
   unsigned long now = millis();
 
-  if (now - lastSensorCheck >= sensorCheckRate) {
-    lastSensorCheck = now;
-    triggerAndReadUltrasonics();
-  }
+  // if (now - lastSensorCheck >= sensorCheckRate) {
+  //   lastSensorCheck = now;
+  //   triggerAndReadUltrasonics();
+  // }
 
   byte stableData = 0;
   int firstOn = -1;
