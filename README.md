@@ -7,6 +7,9 @@
 ## Video
 [![Watch the Laser Harp Demo](https://img.youtube.com/vi/c5HmCTt6hQ4/maxresdefault.jpg)](https://youtu.be/c5HmCTt6hQ4)
 
+## DIY Instructions
+https://www.instructables.com/Laser-Harp-2
+
 ## Disclaimer
 
 This project is challenging and requires a lot of fine-tuning, so be prepared for some trial and error. 
