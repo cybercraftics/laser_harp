@@ -8,6 +8,7 @@
 [![Watch the Laser Harp Demo](https://img.youtube.com/vi/c5HmCTt6hQ4/maxresdefault.jpg)](https://youtu.be/c5HmCTt6hQ4)
 
 Disclaimer:
+
 This project is challenging and requires a lot of fine-tuning, so be prepared for some trial and error. 
 
 High-powered lasers can cause serious eye injuries and even burn surfaces, so please take safety seriously. Make sure you’re wearing certified safety glasses and understand the risks before working with lasers. Take the time to educate yourself about laser safety and proper handling techniques.
